@@ -10,50 +10,25 @@ import math
 from datetime import datetime, timedelta
 from cycler import cycler
 import matplotlib.pyplot as plt
+from index import Index
+from plot_canton import Plot_canton
 
-try:
-	dat = pd.read_csv('/var/www/python/' +
-    	'covid_19/COVID19_Fallzahlen_CH_total_v2.csv',
+# Import data provided by Open Data Zurich
+dat = pd.read_csv('data/ch.csv',
     	parse_dates = ['date']
     	#date_parser = dateparse,
     	)
-except:
-	dat = pd.read_csv('/home/josef/Dokumente/Corona/' +
-    	'covid_19/COVID19_Fallzahlen_CH_total_v2.csv',
+
+dat_inter = pd.read_csv('data/ch_interpolated.csv',
     	parse_dates = ['date']
-    	#date_parser = dateparse,
-    	)
-dat.rename(
-    columns={'abbreviation_canton_and_fl': 'canton'},
-    inplace = True
-)
-# Fürstentum Lichtenstein endat_ch = pd.concat(
-cols = dat.columns[[0,2,3,4,5,6,7,8,9,10]]
-dat = dat.loc[:,cols]
-dat = dat[dat['canton'] != 'FL' ]
+		)
+dat_ffill = pd.read_csv('data/ch_ffill.csv',
+    	parse_dates = ['date']
+		)
+
+cantons = dat['canton'].drop_duplicates()
 ```
 
-```{python default cycler, include = False, echo = False}
-default_cycler = (
-    cycler( linestyle=['-','--',':','-.']) *
-	cycler(color=[
-	'black','orange','cyan','lime','blue','red','fuchsia'])
-)
-```
-```{python, include = True, echo = False}
-class Index():
-    def __init__(self, df, index):
-        self.df = df.set_index( keys = index )
-
-    def __enter__(self):
-        return self.df
-
-    def __exit__(self, *args):
-        pass
-
-    def update(self):
-        pass
-```
 
 ## Vollständigkeit
 
@@ -82,51 +57,8 @@ def incomplete_index( dates_arg ):
 
 for i in range(total_days-7,total_days):
 	print(str(dates.iloc[i]) + ": "+ str(data_exists_nbr[i]) + " Kantone\n" + str(data_exists[i].values))
-data_exists_nbr.index(26)
-dates.iloc[30]
 ```
 
-```{python, include = True, echo = False}
-first_day = dat['date'].min()
-last_day = dat['date'].max()
-cantons = dat['canton'].drop_duplicates()
-cols = dat.columns[2:]
-date_range = pd.date_range(
-	start = first_day,
-	end = last_day
-)
-date_canton = pd.MultiIndex.from_product(
-	[date_range, cantons],
-	names = ['date','canton']
-)
-dat_inter_raw = pd.DataFrame(
-	index = date_canton,
-	columns = cols
-)
-with Index(dat, ['date','canton']) as df:
-	for ind in dat_inter_raw.index:
-		if ind in df.index:
-			dat_inter_raw.loc[ind] = df.loc[ind].values
-dat_inter_raw.loc[:,cols] = dat_inter_raw.loc[:,cols].astype('float')
-dat_inter_raw.reset_index(inplace = True)
-dat_inter_raw.set_index('canton', inplace = True)
-dat_inter_raw['ncumul_conf']
-dat_inter = dat_inter_raw.copy()
-cols_date = ['date']
-cols_date.extend(cols)
-for canton in cantons:
-#	canton = 'LU'
-	df_sub = dat_inter_raw.loc[canton]
-	df_sub.reset_index( inplace = True )
-	df_sub = df_sub.loc[:,cols_date]
-	df_sub.set_index( 'date', inplace = True)
-	#df_sub.interpolate( method='spline',order=1, inplace = True)
-	df_sub = df_sub.interpolate( method='time')
-	df_sub.reset_index( inplace = True )
-	dat_inter.loc[canton,cols] = df_sub.loc[:,cols].values
-dat_inter.reset_index( inplace = True )
-dat_inter
-```
 ```{python cycler, include = True, echo = False}
 default_cycler = (
 	cycler( color=['blue','green','orange','red','fuchsia'] )*
@@ -140,7 +72,7 @@ col_cycler = (
 
 # Schweizweite Entwicklung
 
-```{python Totale Anzahl, include = True, echo = False}
+```{python Totale Anzahl, include = True, echo = False, caption = "Totale Fallzahlen in der Schweiz basierend auf katnonalen Meldungen. Fehlende Daten wurden interpoliert"}
 with Index(dat_inter,['canton']) as df_:
 	zh_vent = df_.loc['ZH','current_vent'].values
 
@@ -168,7 +100,7 @@ with Index(dat_inter,['date','canton']) as df_:
 	plt.yscale('log')
 	plt.grid(which='both')
 	plt.legend()
-	ax.set_title('Schweiz (Totale Fallzahlen)')
+	ax.set_title('Schweiz (Fallzahlen)')
 	ax.set_ylabel('Anzahl Fälle')
 	fig.autofmt_xdate()
 
@@ -220,422 +152,60 @@ plt.rc('axes', prop_cycle=default_cycler)
 
 ## Luzern
 
-```{python Luzern Total, include = True, echo = False}
-with Index(dat,['canton']) as df_:
-	df = df_.loc['LU']
-	df = df.reset_index()
-	dates = df['date'].drop_duplicates()
-	#dates_complete = complete_index(dates)
-	dates_complete = dates
-	df = df.set_index('date')
-	plt.rc('axes', prop_cycle=default_cycler)
-	fig = plt.figure()
-	ax = fig.subplots()
-	ax.plot(df['ncumul_conf'],label='Positive Testergebnisse')
-	ax.plot(df['current_hosp'],label='Hospitalisierungen')
-	ax.plot(df['ncumul_deceased'],label='Verstorben')
-	ax.plot(df['current_icu'],label='Intensivstation')
-	ax.plot(df['current_vent'],label='Beatmet')
-	plt.yscale('log')
-	plt.grid(which='both')
-	plt.legend()
-	ax.set_title('Luzern (Totale Fälle)')
-	ax.set_ylabel('Anzahl Fälle')
-	fig.autofmt_xdate()
+```{python, include = True, echo = False}
+plot_lu = Plot_canton('LU','Luzern')
+plot_lu.plot0(dat)
 ```
-
-```{python Luzern, include = True, echo = False}
-with Index(dat,['canton']) as df_:
-	df = df_.loc['LU']
-	df = df.reset_index()
-	dates = df['date'].drop_duplicates()
-	#dates_complete = complete_index(dates)
-	dates_complete = dates
-	df = df.set_index('date')
-	released = df.loc[:,'ncumul_released'].values
-	released[np.isnan(released)] = 0
-	deceased = df.loc[:,'ncumul_deceased'].values
-	deceased[np.isnan(deceased)] = 0
-	df.loc[:,'current_hosp'] = df.loc[:,'current_hosp'].values + released  + deceased
-	df.loc[:,'current_vent'] = df.loc[:,'current_vent'].values + released + deceased
-	df.loc[:,'current_icu'] = df.loc[:,'current_icu'].values + deceased
-	df = (df.rolling('7D').mean()).diff()
-	#df = df.mean().diff()
-	fig = plt.figure()
-	ax = fig.subplots()
-	ax.plot(df['ncumul_conf'],label='Neue Positive Testergebnisse')
-	ax.plot(df['current_hosp'],label='Neue Hospitalisierungen')
-	#ax.plot(df['current_icu'],label='Intensivstation')
-	#ax.plot(df['ncumul_deceased'],label='Beatmet')
-	ax.plot(df['ncumul_deceased'],label='Verstorben')
-	plt.yscale('log')
-	plt.grid(which='both')
-	plt.legend()
-	ax.set_title('Luzern (Durchschnittswerte der letzten 7 Tage)')
-	ax.set_ylabel('Durchschnittswert pro Tag')
-	fig.autofmt_xdate()
-```
-
 
 ## Aargau
 
-```{python Aargau Total, include = True, echo = False}
-with Index(dat,['canton']) as df_:
-	df = df_.loc['AG']
-	df = df.reset_index()
-	dates = df['date'].drop_duplicates()
-	#dates_complete = complete_index(dates)
-	dates_complete = dates
-	df = df.set_index('date')
-	plt.rc('axes', prop_cycle=default_cycler)
-	fig = plt.figure()
-	ax = fig.subplots()
-	ax.plot(df['ncumul_conf'],label='Positive Testergebnisse')
-	ax.plot(df['current_hosp'],label='Hospitalisierungen')
-	ax.plot(df['ncumul_deceased'],label='Verstorben')
-	ax.plot(df['current_icu'],label='Intensivstation')
-	ax.plot(df['current_vent'],label='Beatmet')
-	plt.yscale('log')
-	plt.grid(which='both')
-	plt.legend()
-	ax.set_title('Aargau (Totale Fälle)')
-	ax.set_ylabel('Anzahl Fälle')
-	fig.autofmt_xdate()
-```
-```{python Aargau, include = True, echo = False}
-with Index(dat,['canton','date']) as df:
-	df = df.loc['AG']
-	df = df.reset_index()
-	dates = df['date'].drop_duplicates()
-	#dates_complete = complete_index(dates)
-	dates_complete = dates
-	df = df.set_index('date')
-
-	released = df.loc[:,'ncumul_released'].values
-	released[np.isnan(released)] = 0
-	deceased = df.loc[:,'ncumul_deceased'].values
-	deceased[np.isnan(deceased)] = 0
-	df.loc[:,'current_hosp'] = df.loc[:,'current_hosp'].values + released  + deceased
-	df.loc[:,'current_vent'] = df.loc[:,'current_vent'].values + released + deceased
-	df.loc[:,'current_icu'] = df.loc[:,'current_icu'].values + deceased
-	df = df.rolling('7D',min_periods=1).mean().diff()
-	#df = df.mean().diff()
-
-	fig = plt.figure()
-	ax = fig.subplots()
-	ax.plot(df['ncumul_conf'],label='Neue Positive Testergebnisse')
-	ax.plot(df['current_hosp'],label='Neue Hospitalisierungen')
-	#ax.plot(df['current_icu'],label='Intensivstation')
-	#ax.plot(df['ncumul_deceased'],label='Beatmet')
-	ax.plot(df['ncumul_deceased'],label='Verstorben')
-	plt.yscale('log')
-	plt.grid(which='both')
-	plt.legend()
-	ax.set_title('Aargau (Durchschnittswerte der letzten 7 Tage)')
-	ax.set_ylabel('Durchschnittswert pro Tag')
-	fig.autofmt_xdate()
+```{python, include = True, echo = False}
+plot_lu = Plot_canton('AG','Aargau')
+plot_lu.plot0(dat)
 ```
 
+## Basel-Stadt
+```{python, include = True, echo = False}
+plot_lu = Plot_canton('BS','Basel-Stadt')
+plot_lu.plot0(dat)
+```
+
+## Basel-Land
+```{python, include = True, echo = False}
+plot_lu = Plot_canton('BL','Basel-Land')
+plot_lu.plot0(dat)
+```
 ## Bern
 
-```{python Bern Total, include = True, echo = False}
-with Index(dat,['canton']) as df_:
-	df = df_.loc['BE']
-	df = df.reset_index()
-	dates = df['date'].drop_duplicates()
-	#dates_complete = complete_index(dates)
-	dates_complete = dates
-	df = df.set_index('date')
-	plt.rc('axes', prop_cycle=default_cycler)
-	fig = plt.figure()
-	ax = fig.subplots()
-	ax.plot(df['ncumul_conf'],label='Positive Testergebnisse')
-	ax.plot(df['current_hosp'],label='Hospitalisierungen')
-	ax.plot(df['ncumul_deceased'],label='Verstorben')
-	ax.plot(df['current_icu'],label='Intensivstation')
-	ax.plot(df['current_vent'],label='Beatmet')
-	plt.yscale('log')
-	plt.grid(which='both')
-	plt.legend()
-	ax.set_title('Bern (Totale Fälle)')
-	ax.set_ylabel('Anzahl Fälle')
-	fig.autofmt_xdate()
-```
-
-```{python Bern, include = True, echo = False}
-with Index(dat,['canton']) as df_:
-	df = df_.loc['LU']
-	df = df.reset_index()
-	dates = df['date'].drop_duplicates()
-	#dates_complete = complete_index(dates)
-	dates_complete = dates
-	df = df.set_index('date')
-	released = df.loc[:,'ncumul_released'].values
-	released[np.isnan(released)] = 0
-	deceased = df.loc[:,'ncumul_deceased'].values
-	deceased[np.isnan(deceased)] = 0
-	df.loc[:,'current_hosp'] = df.loc[:,'current_hosp'].values + released  + deceased
-	df.loc[:,'current_vent'] = df.loc[:,'current_vent'].values + released + deceased
-	df.loc[:,'current_icu'] = df.loc[:,'current_icu'].values + deceased
-	df = (df.rolling('7D').mean()).diff()
-	#df = df.mean().diff()
-	fig = plt.figure()
-	ax = fig.subplots()
-	ax.plot(df['ncumul_conf'],label='Neue Positive Testergebnisse')
-	ax.plot(df['current_hosp'],label='Neue Hospitalisierungen')
-	#ax.plot(df['current_icu'],label='Intensivstation')
-	#ax.plot(df['ncumul_deceased'],label='Beatmet')
-	ax.plot(df['ncumul_deceased'],label='Verstorben')
-	plt.yscale('log')
-	plt.grid(which='both')
-	plt.legend()
-	ax.set_title('Bern (Durchschnittswerte der letzten 7 Tage)')
-	ax.set_ylabel('Durchschnittswert pro Tag')
-	fig.autofmt_xdate()
+```{python, include = True, echo = False}
+plot_lu = Plot_canton('BE','Bern')
+plot_lu.plot0(dat)
 ```
 
 ## Zürich
-```{python Zürich Total, include = True, echo = False}
-with Index(dat,['canton']) as df_:
-	df = df_.loc['ZH']
-	df = df.reset_index()
-	dates = df['date'].drop_duplicates()
-	#dates_complete = complete_index(dates)
-	dates_complete = dates
-	df = df.set_index('date')
-	plt.rc('axes', prop_cycle=default_cycler)
-	fig = plt.figure()
-	ax = fig.subplots()
-	ax.plot(df['ncumul_conf'],label='Positive Testergebnisse')
-	ax.plot(df['current_hosp'],label='Hospitalisierungen')
-	ax.plot(df['ncumul_deceased'],label='Verstorben')
-	ax.plot(df['current_icu'],label='Intensivstation')
-	ax.plot(df['current_vent'],label='Beatmet')
-	plt.yscale('log')
-	plt.grid(which='both')
-	plt.legend()
-	ax.set_title('Zürich (Totale Fälle)')
-	ax.set_ylabel('Anzahl Fälle')
-	fig.autofmt_xdate()
+
+```{python, include = True, echo = False}
+plot_lu = Plot_canton('ZH','Zürich')
+plot_lu.plot0(dat)
 ```
-```{python Zürich, include = True, echo = False}
-with Index(dat,['canton','date']) as df:
-	df = df.loc['ZH']
-	df = df.reset_index()
-	df
-	dates = df['date'].drop_duplicates()
-	#dates_complete = complete_index(dates)
-	dates_complete = dates
-
-	df = df.set_index('date')
-	#df = df.sum(level='date',skipna=True)
-
-	released = df.loc[:,'ncumul_released'].values
-	released[np.isnan(released)] = 0
-	deceased = df.loc[:,'ncumul_deceased'].values
-	deceased[np.isnan(deceased)] = 0
-	df.loc[:,'current_hosp'] = df.loc[:,'current_hosp'].values + released  + deceased
-	df.loc[:,'current_vent'] = df.loc[:,'current_vent'].values + released + deceased
-	vent = df.loc[:,'current_vent'].values
-	df.loc[:,'current_icu'] = df.loc[:,'current_icu'].values + deceased + vent
-	df = df.rolling('7D',min_periods=1).mean().diff()
-	#df = df.mean().diff()
-	fig = plt.figure()
-	ax = fig.subplots()
-	ax.plot(df['ncumul_conf'],label='Neue Positive Testergebnisse')
-	ax.plot(df['current_hosp'],label='Neue Hospitalisierungen')
-	#ax.plot(df['current_icu'],label='Intensivstation')
-	#ax.plot(df['current_vent'],label='Beatmet')
-	ax.plot(df['ncumul_deceased'],label='Verstorben')
-	plt.yscale('log')
-	plt.grid(which='both')
-	plt.legend()
-	ax.set_title('Zürich (Durchschnittswerte der letzten 7 Tage)')
-	ax.set_ylabel('Durchschnittswert pro Tag')
-	fig.autofmt_xdate()
-```
-
 
 ## Genf
 
-```{python Genf Total, include = True, echo = False}
-with Index(dat,['canton']) as df_:
-	df = df_.loc['GE']
-	df = df.reset_index()
-	dates = df['date'].drop_duplicates()
-	#dates_complete = complete_index(dates)
-	dates_complete = dates
-	df = df.set_index('date')
-	plt.rc('axes', prop_cycle=default_cycler)
-	fig = plt.figure()
-	ax = fig.subplots()
-	ax.plot(df['ncumul_conf'],label='Positive Testergebnisse')
-	ax.plot(df['current_hosp'],label='Hospitalisierungen')
-	ax.plot(df['ncumul_deceased'],label='Verstorben')
-	ax.plot(df['current_icu'],label='Intensivstation')
-	ax.plot(df['current_vent'],label='Beatmet')
-	plt.yscale('log')
-	plt.grid(which='both')
-	plt.legend()
-	ax.set_title('Genf (Totale Fälle)')
-	ax.set_ylabel('Anzahl Fälle')
-	fig.autofmt_xdate()
-```
-```{python Genf, include = True, echo = False}
-with Index(dat,['canton','date']) as df:
-	df = df.loc['GE']
-	df = df.reset_index()
-	dates = df['date'].drop_duplicates()
-	#dates_complete = complete_index(dates)
-	dates_complete = dates
-	df = df.set_index('date')
-	#df = df.sum(level='date',skipna=True)
-	df.iloc[len(dates)-1]
-
-	released = df.loc[:,'ncumul_released'].values
-	released[np.isnan(released)] = 0
-	deceased = df.loc[:,'ncumul_deceased'].values
-	deceased[np.isnan(deceased)] = 0
-	df.loc[:,'current_hosp'] = df.loc[:,'current_hosp'].values + released  + deceased
-	df.loc[:,'current_vent'] = df.loc[:,'current_vent'].values + released + deceased
-	df.loc[:,'current_icu'] = df.loc[:,'current_icu'].values + deceased
-	df = df.rolling('7D',min_periods=1).mean().diff()
-	#df = df.mean().diff()
-
-	fig = plt.figure()
-	ax = fig.subplots()
-	ax.plot(df['ncumul_conf'],label='Neue Positive Testergebnisse')
-	ax.plot(df['current_hosp'],label='Neue Hospitalisierungen')
-	#ax.plot(df['current_icu'],label='Intensivstation')
-	#ax.plot(df['ncumul_deceased'],label='Beatmet')
-	ax.plot(df['ncumul_deceased'],label='Verstorben')
-	plt.yscale('log')
-	plt.grid(which='both')
-	plt.legend()
-	ax.set_title('Genf (Durchschnittswerte der letzten 7 Tage)')
-	ax.set_ylabel('Durchschnittswert pro Tag')
-	fig.autofmt_xdate()
+```{python, include = True, echo = False}
+plot_lu = Plot_canton('GE','Genf')
+plot_lu.plot0(dat)
 ```
 
 ## Waadt
 
-```{python Waadt Total, include = True, echo = False}
-with Index(dat,['canton']) as df_:
-	df = df_.loc['VD']
-	df = df.reset_index()
-	dates = df['date'].drop_duplicates()
-	#dates_complete = complete_index(dates)
-	dates_complete = dates
-	df = df.set_index('date')
-	plt.rc('axes', prop_cycle=default_cycler)
-	fig = plt.figure()
-	ax = fig.subplots()
-	ax.plot(df['ncumul_conf'],label='Positive Testergebnisse')
-	ax.plot(df['current_hosp'],label='Hospitalisierungen')
-	ax.plot(df['ncumul_deceased'],label='Verstorben')
-	ax.plot(df['current_icu'],label='Intensivstation')
-	ax.plot(df['current_vent'],label='Beatmet')
-	plt.yscale('log')
-	plt.grid(which='both')
-	plt.legend()
-	ax.set_title('Waadt (Totale Fälle)')
-	ax.set_ylabel('Anzahl Fälle')
-	fig.autofmt_xdate()
-```
-
-```{python Waadt, include = True, echo = False}
-with Index(dat,['canton','date']) as df:
-	df = df.loc['VD']
-	df = df.reset_index()
-	dates = df['date'].drop_duplicates()
-	#dates_complete = complete_index(dates)
-	dates_complete = dates
-	df = df.set_index('date')
-	#df = df.sum(level='date',skipna=True)
-
-	released = df.loc[:,'ncumul_released'].values
-	released[np.isnan(released)] = 0
-	deceased = df.loc[:,'ncumul_deceased'].values
-	deceased[np.isnan(deceased)] = 0
-	df.loc[:,'current_hosp'] = df.loc[:,'current_hosp'].values + released  + deceased
-	df.loc[:,'current_vent'] = df.loc[:,'current_vent'].values + released + deceased
-	df.loc[:,'current_icu'] = df.loc[:,'current_icu'].values + deceased
-	df = df.rolling('7D',min_periods=1).mean().diff()
-	#df = df.mean().diff()
-
-	fig = plt.figure()
-	ax = fig.subplots()
-	ax.plot(df['ncumul_conf'],label='Neue Positive Testergebnisse')
-	ax.plot(df['current_hosp'],label='Neue Hospitalisierungen')
-	dat
-	#ax.plot(df['current_icu'],label='Intensivstation')
-	#ax.plot(df['ncumul_deceased'],label='Beatmet')
-	ax.plot(df['ncumul_deceased'],label='Verstorben')
-	plt.yscale('log')
-	plt.grid(which='both')
-	plt.legend()
-	ax.set_title('Waadt (Durchschnittswerte der letzten 7 Tage)')
-	ax.set_ylabel('Durchschnittswert pro Tag')
-	fig.autofmt_xdate()
+```{python, include = True, echo = False}
+plot_lu = Plot_canton('VD','Waadt')
+plot_lu.plot0(dat)
 ```
 
 ## Tessin
 
-```{python Tessin Total, include = True, echo = False}
-with Index(dat,['canton']) as df_:
-	df = df_.loc['TI']
-	df = df.reset_index()
-	dates = df['date'].drop_duplicates()
-	#dates_complete = complete_index(dates)
-	dates_complete = dates
-	df = df.set_index('date')
-	plt.rc('axes', prop_cycle=default_cycler)
-	fig = plt.figure()
-	ax = fig.subplots()
-	ax.plot(df['ncumul_conf'],label='Positive Testergebnisse')
-	ax.plot(df['current_hosp'],label='Hospitalisierungen')
-	ax.plot(df['ncumul_deceased'],label='Verstorben')
-	ax.plot(df['current_icu'],label='Intensivstation')
-	ax.plot(df['current_vent'],label='Beatmet')
-	plt.yscale('log')
-	plt.grid(which='both')
-	plt.legend()
-	ax.set_title('Tessin (Totale Fälle)')
-	ax.set_ylabel('Anzahl Fälle')
-	fig.autofmt_xdate()
-```
-
-```{python Tessin, include = True, echo = False}
-with Index(dat,['canton','date']) as df:
-	df = df.loc['TI']
-	df = df.reset_index()
-	dates = df['date'].drop_duplicates()
-	#dates_complete = complete_index(dates)
-	dates_complete = dates
-	df = df.set_index('date')
-	#df = df.sum(level='date',skipna=True)
-
-	released = df.loc[:,'ncumul_released'].values
-	released[np.isnan(released)] = 0
-	deceased = df.loc[:,'ncumul_deceased'].values
-	deceased[np.isnan(deceased)] = 0
-	df.loc[:,'current_hosp'] = df.loc[:,'current_hosp'].values + released  + deceased
-	df.loc[:,'current_vent'] = df.loc[:,'current_vent'].values + released + deceased
-	df.loc[:,'current_icu'] = df.loc[:,'current_icu'].values + deceased
-	df = df.rolling('7D',min_periods=1).mean().diff()
-	#df = df.mean().diff()
-
-	fig = plt.figure()
-	ax = fig.subplots()
-	ax.plot(df['ncumul_conf'],label='Neue Positive Testergebnisse')
-	ax.plot(df['current_hosp'],label='Neue Hospitalisierungen')
-	#ax.plot(df['current_icu'],label='Intensivstation')
-	#ax.plot(df['ncumul_deceased'],label='Beatmet')
-	ax.plot(df['ncumul_deceased'],label='Verstorben')
-	plt.yscale('log')
-	plt.grid(which='both')
-	plt.legend()
-	fig.autofmt_xdate()
-	ax.set_title('Tessin (Durchschnittswerte der letzten 7 Tage)')
-	ax.set_ylabel('Durchschnittswert pro Tag')
+```{python, include = True, echo = False}
+plot_lu = Plot_canton('TI','Tessin')
+plot_lu.plot0(dat)
 ```

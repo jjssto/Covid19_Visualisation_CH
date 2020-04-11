@@ -1,2 +1,5 @@
-/covid_19/
-/covid19-cases-switzerland/
+/data/
+/__pycache__/
+/analyse_tmp.pmd
+*.html
+*.png
