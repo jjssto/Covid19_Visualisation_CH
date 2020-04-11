@@ -12,6 +12,7 @@ from cycler import cycler
 import matplotlib.pyplot as plt
 from index import Index
 from plot_canton import Plot_canton
+from complete_indices import Complete_indices
 
 # Import data provided by Open Data Zurich
 dat = pd.read_csv('data/ch.csv',
@@ -25,6 +26,11 @@ dat_inter = pd.read_csv('data/ch_interpolated.csv',
 dat_ffill = pd.read_csv('data/ch_ffill.csv',
     	parse_dates = ['date']
 		)
+cols = list(dat_ffill.columns[2:10])
+
+dat_last_dates = pd.read_csv('data/ch_last_update_total.csv',parse_dates=['date'])
+dat_last_dates.set_index('column', inplace = True)
+dat_last_dates
 
 cantons = dat['canton'].drop_duplicates()
 ```
@@ -33,30 +39,10 @@ cantons = dat['canton'].drop_duplicates()
 ## Vollständigkeit
 
 ```{python Vollständigkeit, include = True, echo = False}
-dates = dat['date'].drop_duplicates()
-total_days = len(dates)
-data_exists = []
-with Index(dat,'date') as df:
-	for date in dates:
-		data_exists.append((df.loc[:,'canton'].loc[date]))
-data_exists_nbr = []
-for element in data_exists:
-	data_exists_nbr.append(len(element))
-date_complete_index = total_days -1
-while data_exists_nbr[ date_complete_index ] < 26:
-	date_complete_index = date_complete_index - 1
-
-date_complete = dates.iloc[ date_complete_index ]
-dates_complete = dates[dates <= date_complete].to_list()
-dates_incomplete = dates[dates >= date_complete].to_list()
-def complete_index( dates_arg ):
-	return( dates_arg[dates_arg <= date_complete].to_list() )
-
-def incomplete_index( dates_arg ):
-	return( dates_arg[dates_arg >= date_complete].to_list() )
-
-for i in range(total_days-7,total_days):
-	print(str(dates.iloc[i]) + ": "+ str(data_exists_nbr[i]) + " Kantone\n" + str(data_exists[i].values))
+dates = dat_inter['date'].drop_duplicates()
+ind = Complete_indices(dates, dat_last_dates)
+ind.complete('ncumul_conf')
+ind.incomplete('ncumul_conf')
 ```
 
 ```{python cycler, include = True, echo = False}
@@ -83,20 +69,17 @@ with Index(dat_inter,['date','canton']) as df_:
 	df
 	df.iloc[-len(zh_vent):,4] += zh_vent
 
-	complete = complete_index( dates )
-	incomplete = incomplete_index( dates )
-
 	fig = plt.figure()
 	plt.rc('axes', prop_cycle=col_cycler)
 	ax = fig.subplots()
-	ax.plot(df['ncumul_conf'].loc[complete],label='Positive Testergebnisse')
-	ax.plot(df['ncumul_conf'].loc[incomplete],label='')
-	ax.plot(df['current_hosp'].loc[complete],label='Hospitalisierungen')
-	ax.plot(df['current_hosp'].loc[incomplete],label='')
-	ax.plot(df['ncumul_deceased'].loc[complete],label='Verstorben')
-	ax.plot(df['ncumul_deceased'].loc[incomplete],label='')
-	ax.plot(df['current_icu'].loc[complete],label='Intensivstation')
-	ax.plot(df['current_icu'].loc[incomplete],label='')
+	ax.plot(df['ncumul_conf'].iloc[ind.complete('ncumul_conf')],label='Positive Testergebnisse')
+	ax.plot(df['ncumul_conf'].iloc[ind.incomplete('ncumul_conf')],label='')
+	ax.plot(df['current_hosp'].iloc[ind.complete('current_hosp')],label='Hospitalisierungen')
+	ax.plot(df['current_hosp'].iloc[ind.incomplete('current_hosp')],label='',linestyle='--')
+	ax.plot(df['ncumul_deceased'].iloc[ind.complete('ncumul_deceased')],label='Verstorben')
+	ax.plot(df['ncumul_deceased'].iloc[ind.incomplete('ncumul_deceased')],label='')
+	ax.plot(df['current_icu'].iloc[ind.complete('current_icu')],label='Intensivstation')
+	ax.plot(df['current_icu'].iloc[ind.incomplete('current_icu')],label='')
 	plt.yscale('log')
 	plt.grid(which='both')
 	plt.legend()
@@ -120,24 +103,22 @@ with Index(dat_inter,['canton','date']) as df_:
 	zh_vent = df_.loc['ZH','current_vent'].values
 	zh_vent[np.isnan(zh_vent)] = 0
 	df.loc[:,'current_icu'] = df.loc[:,'current_icu'] + df.loc[:,'ncumul_deceased']
-	df.iloc[-len(zh_vent):,4] += zh_vent
+	df.values[-len(zh_vent):,4] += zh_vent
 	df = df.rolling('7D',min_periods=7).mean().diff()
 	len(zh_vent)
-
-	complete = complete_index( dates )
-	incomplete = incomplete_index( dates )
 
 	fig = plt.figure()
 	plt.rc('axes', prop_cycle=col_cycler)
 	ax = fig.subplots()
-	ax.plot(df['ncumul_conf'].loc[complete],label='Neue Positive Testergebnisse')
-	ax.plot(df['ncumul_conf'].loc[incomplete],label='')
-	ax.plot(df['current_hosp'].loc[complete],label='Neue Hospitalisierungen')
-	ax.plot(df['current_hosp'].loc[incomplete],label='')
-	#ax.plot(df['current_icu'].loc[complete],label='Intensivstation')
-	#ax.plot(df['current_icu'].loc[incomplete],label='')
-	ax.plot(df['ncumul_deceased'].loc[complete],label='Verstorben')
-	ax.plot(df['ncumul_deceased'].loc[incomplete],label='')
+
+	ax.plot(df['ncumul_conf'].iloc[ind.complete('ncumul_conf')],label='Positive Testergebnisse')
+	ax.plot(df['ncumul_conf'].iloc[ind.incomplete('ncumul_conf')],label='')
+	ax.plot(df['current_hosp'].iloc[ind.complete('current_hosp')],label='Hospitalisierungen')
+	ax.plot(df['current_hosp'].iloc[ind.incomplete('current_hosp')],label='',linestyle='--')
+	ax.plot(df['ncumul_deceased'].iloc[ind.complete('ncumul_deceased')],label='Verstorben')
+	ax.plot(df['ncumul_deceased'].iloc[ind.incomplete('ncumul_deceased')],label='')
+	ax.plot(df['current_icu'].iloc[ind.complete('current_icu')],label='Intensivstation')
+	ax.plot(df['current_icu'].iloc[ind.incomplete('current_icu')],label='')
 	plt.yscale('log')
 	plt.grid(which='both')
 	plt.legend()

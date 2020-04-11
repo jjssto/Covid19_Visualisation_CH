@@ -16,12 +16,10 @@ dat.rename(
 
 # Fürstentum Lichtenstein endat_ch = pd.concat(
 dat = dat[dat['canton'] != 'FL' ]
-dat
 
 # remove columns that don't contain data
 cols = dat.columns[[0,2,3,4,5,6,7,8,9,10]]
 dat = dat.loc[:,cols]
-dat
 
 dat.to_csv('data/ch.cvs')
 
@@ -90,8 +88,20 @@ for canton in cantons:
 dat_ffill.reset_index( inplace = True )
 dat_inter_raw.reset_index( inplace = True )
 
+cantons = dat_ffill['canton'].drop_duplicates()
+dat_cantons = pd.DataFrame( index = cantons, columns = ['cases'])
+
+with Index(dat_ffill, 'canton') as df:
+	for canton in cantons:
+		series = df['ncumul_conf'].loc[canton].values
+		i = len(series) - 1
+		while np.isnan(series[i]):
+			i = i - 1
+		dat_cantons.loc[canton] = series[i]
+
 
 dat.to_csv('data/ch.csv', index = False )
 dat_inter_raw.to_csv('data/ch_full.csv', index = False)
 dat_inter.to_csv('data/ch_interpolated.csv', index = False)
 dat_ffill.to_csv('data/ch_ffill.csv', index = False )
+dat_cantons.to_csv('data/ch_state.to_csv')
