@@ -4,3 +4,5 @@
 /analyse_tmp.pmd
 *.html
 *.png
+copy_to_server.sh
+move_to_server.sh
