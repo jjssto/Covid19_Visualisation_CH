@@ -18,4 +18,4 @@ def get_data( repository ):
     os.chdir( orig_dir )
 
 if __name__ == "__main__":
-    get_data( respository )
+    get_data( repository )
