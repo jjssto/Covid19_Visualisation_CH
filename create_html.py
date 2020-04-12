@@ -11,7 +11,6 @@ output_file = 'index.html'
 repository = 'data/covid_19/COVID19_Fallzahlen_CH_total_v2.csv'
 
 class Create_html:
-
     # patters for repalcement using regular expressions
     pattern_update = re.compile(r'<p>Update:.*<br/>')
     pattern_geaendert = re.compile(r'Geändert:.*</p>')
@@ -82,7 +81,10 @@ if __name__ == "__main__":
     get_data.get_data()
     html_creator = Create_html( input_file, output_file, repository )
     html_creator.create_html()
-    call(['git','add','figure/*.png'])
-    call(['git','commit','-m "Automatic Update"'])
+    try:
+        call(['git','add','figure/*.png'])
+    except:
+        pass
+    call(['git','commit','-a','-m "Automatic Update"'])
     call(['git','push'])
     call(['git','checkout','master'])
