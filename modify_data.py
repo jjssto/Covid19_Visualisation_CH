@@ -6,7 +6,7 @@ from index import Index
 
 
 dat = pd.read_csv('data/covid_19/COVID19_Fallzahlen_CH_total_v2.csv',
-    	parse_dates = ['date']
+    	parse_dates = ['date','time']
     	#date_parser = dateparse,
     	)
 dat.rename(
@@ -16,17 +16,21 @@ dat.rename(
 
 # Fürstentum Lichtenstein endat_ch = pd.concat(
 dat = dat[dat['canton'] != 'FL' ]
-
+dat
 # remove columns that don't contain data
-cols = dat.columns[[0,2,3,4,5,6,7,8,9,10]]
+cols = dat.columns[[0,1,2,3,4,5,6,7,8,9,10]]
 dat = dat.loc[:,cols]
 
-dat.to_csv('data/ch.cvs')
+dat.set_index(['date','canton','time'], inplace = True)
+dat.sort_index(inplace = True)
+dat.to_csv('data/ch.csv')
 
-
+dat
+dat.reset_index(inplace=True)
 first_day = dat['date'].min()
 last_day = dat['date'].max()
-cantons = dat['canton'].drop_duplicates()
+cantons = list(dat['canton'].drop_duplicates())
+#cantons.sort()
 cols = dat.columns[2:]
 date_range = pd.date_range(
 	start = first_day,
@@ -40,13 +44,24 @@ dat_inter_raw = pd.DataFrame(
 	index = date_canton,
 	columns = cols
 )
-with Index(dat, ['date','canton']) as df:
-	for ind in dat_inter_raw.index:
-		if ind in df.index:
-			dat_inter_raw.loc[ind] = df.loc[ind].values
+dat.shape
+dat_inter_raw.shape
+with Index(dat,'date') as df:
+	len(df.loc['2020-04-11','canton'])
+	len(df.loc['2020-04-11','canton'].drop_duplicates())
+#for i in range(dat.shape[1]):
+#	dat_inter_raw.iloc[i] = df.iloc[i].values[2:]
+df = dat.set_index(['date','canton','time'])
+index_ = df.index
+index = []
+for timestamp in index_:
+	index.append( (timestamp[0],timestamp[1]) )
+for ind in df.index:
+	dat_inter_raw.loc[(ind[0],ind[1])] = df.loc[ind]
+
+
 dat_inter_raw.loc[:,cols] = dat_inter_raw.loc[:,cols].astype('float')
 dat_inter_raw.reset_index(inplace = True)
-
 # interpolated
 
 dat_inter_raw.set_index('canton', inplace = True)
@@ -90,13 +105,16 @@ dat_inter_raw.reset_index( inplace = True )
 
 cantons = dat_ffill['canton'].drop_duplicates()
 dat_cantons = pd.DataFrame( index = cantons, columns = ['cases'])
-
+dat_ffill
 with Index(dat_ffill, 'canton') as df:
 	for canton in cantons:
 		series = df['ncumul_conf'].loc[canton].values
 		i = len(series) - 1
 		while np.isnan(series[i]):
-			i = i - 1
+			if i >= 0:
+				i = i - 1
+			else:
+				break
 		dat_cantons.loc[canton] = series[i]
 
 
@@ -104,4 +122,4 @@ dat.to_csv('data/ch.csv', index = False )
 dat_inter_raw.to_csv('data/ch_full.csv', index = False)
 dat_inter.to_csv('data/ch_interpolated.csv', index = False)
 dat_ffill.to_csv('data/ch_ffill.csv', index = False )
-dat_cantons.to_csv('data/ch_state.to_csv')
+dat_cantons.to_csv('data/ch_cantons.csv')

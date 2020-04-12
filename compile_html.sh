@@ -7,6 +7,8 @@ git pull
 cd ../..
 
 ./modify_data.py
+./missing.py
+
 sed "s/\[Timestamp\]/$(date)/g" analyse.pmd > $TMP
 
 pweave -f md2html -F figures -o corona_info.html $TMP

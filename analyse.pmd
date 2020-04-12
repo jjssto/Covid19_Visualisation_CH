@@ -13,6 +13,8 @@ import matplotlib.pyplot as plt
 from index import Index
 from plot_canton import Plot_canton
 from complete_indices import Complete_indices
+import geopandas as gpd
+import geoplot as gplt
 
 # Import data provided by Open Data Zurich
 dat = pd.read_csv('data/ch.csv',
@@ -36,7 +38,6 @@ cantons = dat['canton'].drop_duplicates()
 ```
 
 
-## Vollständigkeit
 
 ```{python Vollständigkeit, include = True, echo = False}
 dates = dat_inter['date'].drop_duplicates()
@@ -170,6 +171,20 @@ plot_lu = Plot_canton('ZH','Zürich')
 plot_lu.plot0(dat)
 ```
 
+## Graubünden
+
+```{python, include = True, echo = False}
+plot_lu = Plot_canton('GR','Graubünden')
+plot_lu.plot0(dat)
+```
+
+## Wallis
+
+```{python, include = True, echo = False}
+plot_lu = Plot_canton('VS','Wallis')
+plot_lu.plot0(dat)
+```
+
 ## Genf
 
 ```{python, include = True, echo = False}
@@ -190,3 +205,38 @@ plot_lu.plot0(dat)
 plot_lu = Plot_canton('TI','Tessin')
 plot_lu.plot0(dat)
 ```
+
+# Karte
+```{python, include = True, echo = False}
+map = gpd.read_file(
+	filename = 'map/BOUNDARIES_2020/DATEN/swissBOUNDARIES3D/SHAPEFILE_LV03_LN02/swissBOUNDARIES3D_1_3_TLM_KANTONSGEBIET.shp'
+	)
+cant_nr = pd.read_csv('data/covid_19/mappingCanton_BFS.csv')
+nbr_cases = pd.read_csv('data/ch_cantons.csv')
+map = map.set_index(['KANTONSNUM'])
+cant_nr = cant_nr.set_index('abk')
+map['cases'] = np.nan
+map['casespercapita'] = np.nan
+map
+nbr_cases = nbr_cases.set_index('canton')
+for canton in cantons:
+	nbr = cant_nr.loc[canton]
+	population = map.loc[nbr,'EINWOHNERZ'].iloc[0]
+	map.loc[nbr,'cases'] = nbr_cases.loc[canton].values
+	map.loc[nbr,'casespercapita'] = nbr_cases.loc[canton].values / population * 1000
+	#color = nbr_cases.loc[canton] / population
+fig, ax = plt.subplots(1, 1)
+map.plot(column = 'casespercapita', ax=ax, legend=True, cmap='OrRd')
+ax.set_title('Positiv getestete Fälle per 1000 Einwohner')
+fig.autofmt_xdate()
+map
+```
+
+<!--
+```{python, include = True, echo = False}
+fig, ax = plt.subplots(1, 1)
+map.plot(column = 'cases', ax=ax, legend=True, cmap='OrRd')
+ax.set_title('Anzahl positiv getestete Fälle')
+fig.autofmt_xdate()
+```
+-->
