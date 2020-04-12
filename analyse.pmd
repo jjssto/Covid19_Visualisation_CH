@@ -4,30 +4,30 @@
 ```{python, echo = False}
 import numpy as np
 import pandas as pd
+import geopandas as gpd
+import geoplot as gplt
+import matplotlib.pyplot as plt
 from pandas.plotting import register_matplotlib_converters
 register_matplotlib_converters()
 import math
 from datetime import datetime, timedelta
 from cycler import cycler
-import matplotlib.pyplot as plt
 from index import Index
 from plot_canton import Plot_canton
 from complete_indices import Complete_indices
-import geopandas as gpd
-import geoplot as gplt
 
 # Import data provided by Open Data Zurich
 dat = pd.read_csv('data/ch.csv',
-    	parse_dates = ['date']
-    	#date_parser = dateparse,
-    	)
+        parse_dates = ['date']
+        #date_parser = dateparse,
+        )
 
 dat_inter = pd.read_csv('data/ch_interpolated.csv',
-    	parse_dates = ['date']
-		)
+        parse_dates = ['date']
+        )
 dat_ffill = pd.read_csv('data/ch_ffill.csv',
-    	parse_dates = ['date']
-		)
+        parse_dates = ['date']
+        )
 cols = list(dat_ffill.columns[2:10])
 
 dat_last_dates = pd.read_csv('data/ch_last_update_total.csv',parse_dates=['date'])
@@ -35,208 +35,243 @@ dat_last_dates.set_index('column', inplace = True)
 dat_last_dates
 
 cantons = dat['canton'].drop_duplicates()
-```
 
-
-
-```{python Vollständigkeit, include = True, echo = False}
 dates = dat_inter['date'].drop_duplicates()
 ind = Complete_indices(dates, dat_last_dates)
-ind.complete('ncumul_conf')
-ind.incomplete('ncumul_conf')
-```
 
-```{python cycler, include = True, echo = False}
 default_cycler = (
-	cycler( color=['blue','green','orange','red','fuchsia'] )*
-	cycler( linestyle=['-'])
-	)
+    cycler( color=['blue','green','orange','red','fuchsia'] )*
+    cycler( linestyle=['-'])
+    )
 col_cycler = (
-	cycler( color=['blue','green','orange','red','fuchsia'] )*
-	cycler( linestyle=['-',':'])
-	)
+    cycler( color=['blue','green','orange','red','fuchsia'] )*
+    cycler( linestyle=['-',':'])
+    )
+```
+## Schweizweite Situation
+
+### Karten
+
+Die folgende Karte zeigen, wie viele positiv getestete Fälle und wie viele Tote es in den jeweiligen Kantonen je 10'000 EinwohnerInnen bisher gegeben hat.
+
+```{python Karte Fälle pro Kanton, include = True, echo = False}
+# load map of cantonal boundariess of Switzerland
+map = gpd.read_file( filename = 'map/' +
+    'swissBOUNDARIES3D_1_3_TLM_KANTONSGEBIET.shp'
+    )
+
+# load file containing the nbrs used to encode the cantons
+bfs_canton_codes = pd.read_csv(
+    'data/covid_19/mappingCanton_BFS.csv')
+# load the data
+nbr_cantonal_cases = pd.read_csv('data/ch_cases_cantons.csv')
+map = map.set_index(['KANTONSNUM'])
+bfs_canton_codes = bfs_canton_codes.set_index('abk')
+nbr_cantonal_cases = nbr_cantonal_cases.set_index('canton')
+map['cases'] = np.nan
+map['casespercapita'] = np.nan
+for canton in cantons:
+    nbr = bfs_canton_codes.loc[canton]
+    population = map.loc[nbr,'EINWOHNERZ'].iloc[0]
+    map.loc[nbr,'cases'] = nbr_cantonal_cases.loc[canton].values
+    map.loc[
+        nbr,'casespercapita'
+    ] = nbr_cantonal_cases.loc[canton].values / population * 10000
+fig, ax = plt.subplots(1, 1)
+map.plot(column = 'casespercapita', ax=ax, legend=True, cmap='OrRd')
+ax.set_title('Positiv getestete Fälle per 10\'000 EinwohnerInnen')
+fig.autofmt_xdate()
 ```
 
-# Schweizweite Entwicklung
+```{python Karte Tote pro Kanton, include = True, echo = False}
+# load map of cantonal boundariess of Switzerland
 
-```{python Totale Anzahl, include = True, echo = False, caption = "Totale Fallzahlen in der Schweiz basierend auf katnonalen Meldungen. Fehlende Daten wurden interpoliert"}
+# load file containing the nbrs used to encode the cantons
+# load the data
+nbr_cantonal_deaths = pd.read_csv('data/ch_deaths_cantons.csv')
+nbr_cantonal_deaths = nbr_cantonal_deaths.set_index('canton')
+map['deaths'] = np.nan
+map['deathspercapita'] = np.nan
+for canton in cantons:
+    nbr = bfs_canton_codes.loc[canton]
+    population = map.loc[nbr,'EINWOHNERZ'].iloc[0]
+    map.loc[nbr,'deaths'] = nbr_cantonal_deaths.loc[canton].values
+    map.loc[
+        nbr,'deathspercapita'
+    ] = nbr_cantonal_deaths.loc[canton].values / population * 10000
+fig, ax = plt.subplots(1, 1)
+map.plot(column = 'deathspercapita', ax=ax, legend=True, cmap='OrRd')
+ax.set_title('Todesfälle per 10\'000 EinwohnerInnen')
+fig.autofmt_xdate()
+```
+
+### Verlauf
+
+```{python Totale Anzahl, include = True, echo = False, caption = "Totale Fallzahlen in der Schweiz basierend auf katnonalen Meldungen. Gepunktete Linien bedeuten, dass noch nicht von allen Kantonen Daten vorliegen. Fehlende Daten wurden interpoliert"}
 with Index(dat_inter,['canton']) as df_:
-	zh_vent = df_.loc['ZH','current_vent'].values
+    zh_vent = df_.loc['ZH','current_vent'].values
 
 with Index(dat_inter,['date','canton']) as df_:
-	df = df_.sum(level='date',skipna=True)
-	zh_vent[np.isnan(zh_vent)] = 0
-	df.loc[:,'current_icu'] = df.loc[:,'current_icu']
-	df
-	df.iloc[-len(zh_vent):,4] += zh_vent
+    df = df_.sum(level='date',skipna=True)
+    zh_vent[np.isnan(zh_vent)] = 0
+    df.loc[:,'current_icu'] = df.loc[:,'current_icu']
+    df
+    df.iloc[-len(zh_vent):,4] += zh_vent
 
-	fig = plt.figure()
-	plt.rc('axes', prop_cycle=col_cycler)
-	ax = fig.subplots()
-	ax.plot(df['ncumul_conf'].iloc[ind.complete('ncumul_conf')],label='Positive Testergebnisse')
-	ax.plot(df['ncumul_conf'].iloc[ind.incomplete('ncumul_conf')],label='')
-	ax.plot(df['current_hosp'].iloc[ind.complete('current_hosp')],label='Hospitalisierungen')
-	ax.plot(df['current_hosp'].iloc[ind.incomplete('current_hosp')],label='',linestyle='--')
-	ax.plot(df['ncumul_deceased'].iloc[ind.complete('ncumul_deceased')],label='Verstorben')
-	ax.plot(df['ncumul_deceased'].iloc[ind.incomplete('ncumul_deceased')],label='')
-	ax.plot(df['current_icu'].iloc[ind.complete('current_icu')],label='Intensivstation')
-	ax.plot(df['current_icu'].iloc[ind.incomplete('current_icu')],label='')
-	plt.yscale('log')
-	plt.grid(which='both')
-	plt.legend()
-	ax.set_title('Schweiz (Fallzahlen)')
-	ax.set_ylabel('Anzahl Fälle')
-	fig.autofmt_xdate()
-
-plt.rc('axes', prop_cycle=default_cycler)
+    fig = plt.figure()
+    plt.rc('axes', prop_cycle=col_cycler)
+    ax = fig.subplots()
+    ax.plot(df['ncumul_conf'].iloc[ind.complete('ncumul_conf')],
+        label='Positive Testergebnisse')
+    ax.plot(df['ncumul_conf'].iloc[ind.incomplete('ncumul_conf')],
+        label='')
+    ax.plot(df['current_hosp'].iloc[ind.complete('current_hosp')],
+        label='Hospitalisierungen')
+    ax.plot(df['current_hosp'].iloc[ind.incomplete('current_hosp')],
+        label='',linestyle='--')
+    ax.plot(df['ncumul_deceased'].iloc[ind.complete('ncumul_deceased')],label='Verstorben')
+    ax.plot(df['ncumul_deceased'].iloc[
+            ind.incomplete('ncumul_deceased')
+        ],label='')
+    ax.plot(df['current_icu'].iloc[ind.complete('current_icu')],
+        label='Intensivstation')
+    ax.plot(df['current_icu'].iloc[ind.incomplete('current_icu')],
+        label='')
+    plt.yscale('log')
+    plt.grid(which='both')
+    plt.legend()
+    ax.set_title('Schweiz (Fallzahlen)')
+    ax.set_ylabel('Anzahl Fälle')
+    fig.autofmt_xdate()
 ```
 
-```{python Neuansteckungen, include = True, echo = False}
+```{python Totale Anzahl, include = True, echo = False, caption = "Die Anzahl Fälle, welche jeweils über die letzten 7 Tage durchschnittlich neu hinzugekommen sind. Gepunktete Linien bedeuten, dass noch nicht von allen Kantonen Daten vorliegen. Fehlende Daten wurden interpoliert."}
 cantons = dat['canton'].drop_duplicates()
 dates = dat['date'].drop_duplicates()
 cols = dat.columns[[3,4,5,6,7,8,9]]
 df_ = dat.set_index(['canton','date'])
 with Index(dat_inter,['canton','date']) as df_:
 
-	df = df_.sum(level='date',skipna=True)
-	#df = df.sum(level='date',skipna=True)
-	df.loc[:,'current_hosp'] = df.loc[:,'current_hosp'] + df.loc[:,'ncumul_released'] + df.loc[:,'ncumul_deceased']
-	zh_vent = df_.loc['ZH','current_vent'].values
-	zh_vent[np.isnan(zh_vent)] = 0
-	df.loc[:,'current_icu'] = df.loc[:,'current_icu'] + df.loc[:,'ncumul_deceased']
-	df.values[-len(zh_vent):,4] += zh_vent
-	df = df.rolling('7D',min_periods=7).mean().diff()
-	len(zh_vent)
+    df = df_.sum(level='date',skipna=True)
+    #df = df.sum(level='date',skipna=True)
+    df.loc[:,'current_hosp'] = (
+        df.loc[:,'current_hosp'] +
+        df.loc[:,'ncumul_released'] + df.loc[:,'ncumul_deceased']
+        )
+    zh_vent = df_.loc['ZH','current_vent'].values
+    zh_vent[np.isnan(zh_vent)] = 0
+    df.loc[:,'current_icu'] = (
+        df.loc[:,'current_icu'] + df.loc[:,'ncumul_deceased']
+        )
+    df.values[-len(zh_vent):,4] += zh_vent
+    df = df.rolling('7D',min_periods=7).mean().diff()
+    len(zh_vent)
 
-	fig = plt.figure()
-	plt.rc('axes', prop_cycle=col_cycler)
-	ax = fig.subplots()
+    fig = plt.figure()
+    plt.rc('axes', prop_cycle=col_cycler)
+    ax = fig.subplots()
 
-	ax.plot(df['ncumul_conf'].iloc[ind.complete('ncumul_conf')],label='Positive Testergebnisse')
-	ax.plot(df['ncumul_conf'].iloc[ind.incomplete('ncumul_conf')],label='')
-	ax.plot(df['current_hosp'].iloc[ind.complete('current_hosp')],label='Hospitalisierungen')
-	ax.plot(df['current_hosp'].iloc[ind.incomplete('current_hosp')],label='',linestyle='--')
-	ax.plot(df['ncumul_deceased'].iloc[ind.complete('ncumul_deceased')],label='Verstorben')
-	ax.plot(df['ncumul_deceased'].iloc[ind.incomplete('ncumul_deceased')],label='')
-	ax.plot(df['current_icu'].iloc[ind.complete('current_icu')],label='Intensivstation')
-	ax.plot(df['current_icu'].iloc[ind.incomplete('current_icu')],label='')
-	plt.yscale('log')
-	plt.grid(which='both')
-	plt.legend()
-	ax.set_title('Schweiz (Durchschnittswerte der letzten 7 Tage)')
-	ax.set_ylabel('Durschnittswert pro Tag')
-	fig.autofmt_xdate()
-
-plt.rc('axes', prop_cycle=default_cycler)
+    ax.plot(df['ncumul_conf'].iloc[ind.complete('ncumul_conf')],
+        label='Positive Testergebnisse')
+    ax.plot(df['ncumul_conf'].iloc[ind.incomplete('ncumul_conf')],
+        label='')
+    ax.plot(df['current_hosp'].iloc[ind.complete('current_hosp')],
+        label='Hospitalisierungen')
+    ax.plot(df['current_hosp'].iloc[ind.incomplete('current_hosp')],
+        label='',linestyle='--')
+    ax.plot(df['ncumul_deceased'].iloc[ind.complete('ncumul_deceased')],
+        label='Verstorben')
+    ax.plot(df['ncumul_deceased'].iloc[
+            ind.incomplete('ncumul_deceased')
+        ],label='')
+    ax.plot(df['current_icu'].iloc[ind.complete('current_icu')],
+        label='Intensivstation')
+    ax.plot(df['current_icu'].iloc[ind.incomplete('current_icu')],
+        label='')
+    plt.yscale('log')
+    plt.grid(which='both')
+    plt.legend()
+    ax.set_title('Schweiz (Durchschnittswerte der letzten 7 Tage)')
+    ax.set_ylabel('Durschnittswert pro Tag')
+    fig.autofmt_xdate()
 ```
 
-# Entwicklung in den Kantonen
+## Entwicklung in den Kantonen
 
-## Luzern
+### Luzern
 
 ```{python, include = True, echo = False}
 plot_lu = Plot_canton('LU','Luzern')
 plot_lu.plot0(dat)
 ```
 
-## Aargau
+### Aargau
 
 ```{python, include = True, echo = False}
 plot_lu = Plot_canton('AG','Aargau')
 plot_lu.plot0(dat)
 ```
 
-## Basel-Stadt
+### Basel-Stadt
 ```{python, include = True, echo = False}
 plot_lu = Plot_canton('BS','Basel-Stadt')
 plot_lu.plot0(dat)
 ```
 
-## Basel-Land
+### Basel-Land
 ```{python, include = True, echo = False}
 plot_lu = Plot_canton('BL','Basel-Land')
 plot_lu.plot0(dat)
 ```
-## Bern
+### Bern
 
 ```{python, include = True, echo = False}
 plot_lu = Plot_canton('BE','Bern')
 plot_lu.plot0(dat)
 ```
 
-## Zürich
+### Zürich
 
 ```{python, include = True, echo = False}
 plot_lu = Plot_canton('ZH','Zürich')
 plot_lu.plot0(dat)
 ```
 
-## Graubünden
+### Graubünden
 
 ```{python, include = True, echo = False}
 plot_lu = Plot_canton('GR','Graubünden')
 plot_lu.plot0(dat)
 ```
 
-## Wallis
+### Wallis
 
 ```{python, include = True, echo = False}
 plot_lu = Plot_canton('VS','Wallis')
 plot_lu.plot0(dat)
 ```
 
-## Genf
+### Genf
 
 ```{python, include = True, echo = False}
 plot_lu = Plot_canton('GE','Genf')
 plot_lu.plot0(dat)
 ```
 
-## Waadt
+### Waadt
 
 ```{python, include = True, echo = False}
 plot_lu = Plot_canton('VD','Waadt')
 plot_lu.plot0(dat)
 ```
 
-## Tessin
+### Tessin
 
 ```{python, include = True, echo = False}
 plot_lu = Plot_canton('TI','Tessin')
 plot_lu.plot0(dat)
 ```
 
-# Karte
-```{python, include = True, echo = False}
-map = gpd.read_file(
-	filename = 'map/BOUNDARIES_2020/DATEN/swissBOUNDARIES3D/SHAPEFILE_LV03_LN02/swissBOUNDARIES3D_1_3_TLM_KANTONSGEBIET.shp'
-	)
-cant_nr = pd.read_csv('data/covid_19/mappingCanton_BFS.csv')
-nbr_cases = pd.read_csv('data/ch_cantons.csv')
-map = map.set_index(['KANTONSNUM'])
-cant_nr = cant_nr.set_index('abk')
-map['cases'] = np.nan
-map['casespercapita'] = np.nan
-map
-nbr_cases = nbr_cases.set_index('canton')
-for canton in cantons:
-	nbr = cant_nr.loc[canton]
-	population = map.loc[nbr,'EINWOHNERZ'].iloc[0]
-	map.loc[nbr,'cases'] = nbr_cases.loc[canton].values
-	map.loc[nbr,'casespercapita'] = nbr_cases.loc[canton].values / population * 1000
-	#color = nbr_cases.loc[canton] / population
-fig, ax = plt.subplots(1, 1)
-map.plot(column = 'casespercapita', ax=ax, legend=True, cmap='OrRd')
-ax.set_title('Positiv getestete Fälle per 1000 Einwohner')
-fig.autofmt_xdate()
-map
-```
+## Quelle
 
-<!--
-```{python, include = True, echo = False}
-fig, ax = plt.subplots(1, 1)
-map.plot(column = 'cases', ax=ax, legend=True, cmap='OrRd')
-ax.set_title('Anzahl positiv getestete Fälle')
-fig.autofmt_xdate()
-```
--->
+Die Grafiken auf dieser Seite beruhen auf den Daten, welche durch das *Statistischen Amt des Kanton Zürichs* gesammelt und zur Verfügung gestellt werden. Die Daten findet ihr [hier](https://github.com/openZH/covid_19/blob/master/README.md).
