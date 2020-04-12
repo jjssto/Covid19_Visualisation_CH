@@ -77,7 +77,6 @@ class Create_html:
 
 
 if __name__ == "__main__":
-    call(['git','checkout','gh-pages'])
     get_data.get_data()
     html_creator = Create_html( input_file, output_file, repository )
     html_creator.create_html()
@@ -87,4 +86,3 @@ if __name__ == "__main__":
         pass
     call(['git','commit','-a','-m "Automatic Update"'])
     call(['git','push'])
-    call(['git','checkout','master'])
