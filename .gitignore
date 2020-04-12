@@ -6,3 +6,4 @@
 *.png
 copy_to_server.sh
 move_to_server.sh
+create_html.sh
