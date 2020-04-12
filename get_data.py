@@ -4,7 +4,7 @@ import os
 
 repository = "https://github.com/openZH/covid_19.git"
 
-def get_data():
+def get_data( respository ):
     orig_dir = os.getcwd()
     try:
         os.chdir('data/covid_19')
@@ -15,4 +15,4 @@ def get_data():
     os.chdir( orig_dir )
 
 if __name__ == "__main__":
-    get_data()
+    get_data( respository )
