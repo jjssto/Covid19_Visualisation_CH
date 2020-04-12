@@ -1,10 +1,9 @@
 /data/
 /__pycache__/
-/map/
 /analyse_tmp.pmd
 analyse.html
 corona_info.html
 /copy_to_server.sh
-/figure/
+*.png
 move_to_server.sh
 create_html.sh

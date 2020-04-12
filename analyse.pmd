@@ -1,5 +1,11 @@
 # Corona-Übersicht
-[Timestamp]
+
+<p>Update: 2020-04-13 -- 00:21<br/>
+
+Geändert: 2020-04-13 -- 00:21</p>
+
+
+
 
 ```{python, echo = False}
 import numpy as np
@@ -79,6 +85,7 @@ for canton in cantons:
     ] = nbr_cantonal_cases.loc[canton].values / population * 10000
 fig, ax = plt.subplots(1, 1)
 map.plot(column = 'casespercapita', ax=ax, legend=True, cmap='OrRd')
+map.boundary.plot(ax=ax, color='black',linewidth=0.5)
 ax.set_title('Positiv getestete Fälle per 10\'000 EinwohnerInnen')
 fig.autofmt_xdate()
 ```
@@ -101,6 +108,7 @@ for canton in cantons:
     ] = nbr_cantonal_deaths.loc[canton].values / population * 10000
 fig, ax = plt.subplots(1, 1)
 map.plot(column = 'deathspercapita', ax=ax, legend=True, cmap='OrRd')
+map.boundary.plot(ax=ax, color='black',linewidth=0.5)
 ax.set_title('Todesfälle per 10\'000 EinwohnerInnen')
 fig.autofmt_xdate()
 ```
