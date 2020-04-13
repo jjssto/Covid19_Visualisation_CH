@@ -23,8 +23,8 @@ class Create_html:
         timestamp = datetime.today()
         timestring = timestamp.strftime('%Y-%m-%d -- %H:%M')
         timestring
-        self.subst_update = '<p>Update: ' + timestring + '<br/>\n'
-        self.subst_geaendert = 'Geändert: ' + timestring + '</p>\n'
+        self.subst_update = '<p>Update: ' + timestring + '<br/>'
+        self.subst_geaendert = 'Geändert: ' + timestring + '</p>'
 
     def create_html( self ):
         # timestamp from source file
