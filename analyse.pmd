@@ -162,7 +162,6 @@ dates = dat['date'].drop_duplicates()
 cols = dat.columns[[3,4,5,6,7,8,9]]
 df_ = dat.set_index(['canton','date'])
 with Index(dat_inter,['canton','date']) as df_:
-
     df = df_.sum(level='date',skipna=True)
     #df = df.sum(level='date',skipna=True)
     df.loc[:,'current_hosp'] = (
@@ -197,7 +196,7 @@ with Index(dat_inter,['canton','date']) as df_:
         ],label='')
     ax.plot(df['current_icu'].iloc[ind.complete('current_icu')],
         label='Intensivstation')
-    ax.plot(df['current_icu'].iloc[ind.incomplete('current_icu')],
+    ax.plot(df['current_icu'].iloc[ind.incomplete('current_icu')])
     plt.grid(which='both')
     plt.legend()
     ax.set_title('Schweiz (Durchschnittswerte der letzten 7 Tage)')
