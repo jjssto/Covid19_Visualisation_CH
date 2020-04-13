@@ -1,26 +1,8 @@
 # Visualisierung von kantonalen Daten zu COVID-19
 
-<p>Update: 2020-04-13 -- 12:04<br/>
+<p>Update: 2020-04-13 -- 11:48<br/>
 
-
-
-
-
-
-
-
-
-Geändert: 2020-04-13 -- 12:04</p>
-
-
-
-
-
-
-
-
-
-
+Geändert: 2020-04-13 -- 11:48</p>
 
 ```{python, echo = False}
 import numpy as np
@@ -123,6 +105,8 @@ for canton in cantons:
     ] = nbr_cantonal_deaths.loc[canton].values / population * 10000
 fig, ax = plt.subplots(1, 1)
 map.plot(column = 'deathspercapita', ax=ax, legend=True, cmap='OrRd')
+fig, ax = plt.subplots(1, 1)
+map.plot(column = 'deathspercapita', ax=ax, legend=True, cmap='OrRd')
 map.boundary.plot(ax=ax, color='black',linewidth=0.5)
 ax.set_title('Todesfälle per 10\'000 EinwohnerInnen')
 fig.autofmt_xdate()
@@ -210,8 +194,6 @@ with Index(dat_inter,['canton','date']) as df_:
     ax.plot(df['current_icu'].iloc[ind.complete('current_icu')],
         label='Intensivstation')
     ax.plot(df['current_icu'].iloc[ind.incomplete('current_icu')],
-        label='')
-    plt.yscale('log')
     plt.grid(which='both')
     plt.legend()
     ax.set_title('Schweiz (Durchschnittswerte der letzten 7 Tage)')
