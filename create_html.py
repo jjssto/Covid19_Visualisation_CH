@@ -78,6 +78,7 @@ class Create_html:
 
 if __name__ == "__main__":
     get_data.get_data( repository)
+    call(['git','pull'])
     html_creator = Create_html( input_file, output_file, repository )
     html_creator.create_html()
     try:
