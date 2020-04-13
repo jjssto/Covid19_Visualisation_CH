@@ -166,7 +166,7 @@ with Index(dat_inter,['date','canton']) as df_:
     fig.autofmt_xdate()
 ```
 
-```{python Totale Anzahl, include = True, echo = False, caption = "Die Anzahl Fälle, welche jeweils über die letzten 7 Tage durchschnittlich neu hinzugekommen sind. Gepunktete Linien bedeuten, dass noch nicht von allen Kantonen Daten vorliegen. Fehlende Daten wurden interpoliert."}
+```{python Neue Fälle Anzahl, include = True, echo = False, caption = "Die Anzahl Fälle, welche jeweils über die letzten 7 Tage durchschnittlich neu hinzugekommen sind. Gepunktete Linien bedeuten, dass noch nicht von allen Kantonen Daten vorliegen. Fehlende Daten wurden interpoliert."}
 cantons = dat['canton'].drop_duplicates()
 dates = dat['date'].drop_duplicates()
 cols = dat.columns[[3,4,5,6,7,8,9]]
