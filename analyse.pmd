@@ -1,8 +1,10 @@
 ---
 titel: Visualisierung von kantonalen Daten zu COVID-19
 ---
-<p>Update: 2020-04-13 -- 00:21<br/>
-Geändert: 2020-04-13 -- 00:21</p>
+<p>Update: 2020-04-13 -- 02:10<br/>
+
+Geändert: 2020-04-13 -- 02:10</p>
+
 
 
 ```{python, echo = False}
