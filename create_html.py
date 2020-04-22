@@ -83,9 +83,10 @@ class Create_html:
         f = open( self.output_file, 'r')
         t = open( self.tracking_file, 'r')
         for line in f:
-            if re.match(r'.*HEAD.*',line) is not None:
+            if re.match(r'.*<HEAD.*',line) is not None:
                 tmp_file.write( line )
-                tmp_file.write(t)
+                for line_ in t:
+                    tmp_file.write(line_)
             else:
                 tmp_file.write( line )
         f.close()
