@@ -8,6 +8,7 @@ from subprocess import call
 
 input_file = 'analyse.pmd'
 output_file = 'index.html'
+tracking_file = 'matomo.html'
 repository = 'data/covid_19/COVID19_Fallzahlen_CH_total_v2.csv'
 
 class Create_html:
@@ -15,9 +16,10 @@ class Create_html:
     pattern_update = re.compile(r'<p>Update:.*<br/>')
     pattern_geaendert = re.compile(r'Geändert:.*</p>')
 
-    def __init__(self, input_file, output_file, repository):
+    def __init__(self, input_file, output_file, tracking_file, repository):
         self.input_file = input_file
         self.output_file = output_file
+        self.tracking_file = tracking_file
         self.repository = repository
 
         timestamp = datetime.today()
@@ -45,6 +47,7 @@ class Create_html:
                 doctype = 'md2html',
                 output = self.output_file
                 )
+            self.place_tracking_code()
         else:
             self.replace_timestamps_output()
 
@@ -75,11 +78,28 @@ class Create_html:
         shutil.copystat( self.output_file, tmp_file.name)
         shutil.move( tmp_file.name, self.output_file )
 
+    def place_tracking_code( self ):
+        tmp_file = NamedTemporaryFile( 'w', delete = False )
+        f = open( self.output_file, 'r')
+        t = open( self.tracking_file, 'r')
+        for line in f:
+            if re.match(r'.*<head.*',line) is not None:
+                tmp_file.write( line )
+                tmp_file.write(t)
+            else:
+                tmp_file.write( line )
+        f.close()
+        t.close()
+        tmp_file.close()
+        shutil.copystat( self.output_file, tmp_file.name)
+        shutil.move( tmp_file.name, self.output_file )
+
+
 
 if __name__ == "__main__":
     get_data.get_data( repository)
     call(['git','pull'])
-    html_creator = Create_html( input_file, output_file, repository )
+    html_creator = Create_html( input_file, output_file, tracking_file, repository )
     html_creator.create_html()
     try:
         call(['git','add','figure/*.png'])
